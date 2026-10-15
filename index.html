@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dr. Minhaj Abdullah | Animation, VFX, AI &amp; Computational Media</title>
+  <meta name="description" content="Dr. Minhaj Abdullah, Assistant Professor at Mahindra University: research, award-winning films, teaching, student projects and art in animation, VFX, generative AI and immersive media.">
+  <meta property="og:title" content="Dr. Minhaj Abdullah | Growing stories, one frame at a time">
+  <meta property="og:description" content="Research, awards, teaching, projects and art in animation, VFX, generative AI and immersive media.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#fbfaf5">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 36C8 30 6 16 10 6c10 2 16 10 10 30z' fill='%2373b05f'/%3E%3Cpath d='M20 36C32 30 34 18 30 10c-9 1-15 9-10 26z' fill='%232f6b3e'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="#minhaj" id="brand"></a>
+      <nav class="tabs" aria-label="Portfolio sections"><div class="tabs-row" id="tabs"></div></nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+
+  <footer class="foot" id="foot"></footer>
+
+  <dialog id="lightbox" aria-label="Artwork viewer">
+    <button class="lb-close" type="button" aria-label="Close viewer">&times;</button>
+    <button class="lb-nav prev" type="button" aria-label="Previous artwork">&#8249;</button>
+    <button class="lb-nav next" type="button" aria-label="Next artwork">&#8250;</button>
+    <img alt="">
+    <p class="lb-cap"></p>
+  </dialog>
+
+  <dialog id="deckdlg" aria-label="Slide preview">
+    <div class="dd-bar"><strong id="dd-title"></strong><a id="dd-open" href="#" target="_blank" rel="noopener">Open in a new tab</a><button class="dd-close" type="button" aria-label="Close preview">&times;</button></div>
+    <iframe id="dd-frame" title="Slide preview" loading="lazy" allow="fullscreen"></iframe>
+  </dialog>
+
+  <noscript><p class="wrap" style="padding:2rem 0">This portfolio needs JavaScript to display its content.</p></noscript>
+
+  <script src="js/data.js"></script>
+  <script src="js/slides.js"></script>
+  <script src="js/vector.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
