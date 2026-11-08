@@ -59,6 +59,10 @@ them differently and the **Shuffle the wall** button re-deals them. To add a new
    (`cat` is one of `Painting`, `Sketches`, `Digital & AI`, `Events & awards`; edit `GALLERY_CATS` to add your own.)
 3. For the most reliable loading, you can instead copy the image into `images/art/` and use `src: "images/art/name.jpg"`.
 
+## SEO and social media
+See `SEO-GUIDE.md` for the full free plan. The site address is set to `https://minhajsir.github.io/` in `index.html`, `sitemap.xml`, `robots.txt` and `404.html`.
+To change it: `python3 tools/set_site_url.py --url https://new-address/` (or ask Claude).
+
 ## Preview on your computer
 Double-click `index.html` (fonts need internet).
 
@@ -70,5 +74,3 @@ Double-click `index.html` (fonts need internet).
 5. After 1–3 minutes, open `https://yourusername.github.io`.
 
 To update later, upload a file with the same name; GitHub replaces it.
-
-
