@@ -517,6 +517,7 @@
   var builders = { minhaj: minhajPanel, research: researchPanel, awards: awardsPanel, teaching: teachingPanel, projects: projectsPanel, gallery: galleryPanel };
   var main = $("#main"), tabsEl = $("#tabs");
 
+  main.innerHTML = "";
   $("#brand").innerHTML = VEC.mark() + "<span>" + esc(SITE.shortName) + "</span>";
   TABS.forEach(function (t) {
     tabsEl.insertAdjacentHTML("beforeend", '<a href="#' + t.id + '" data-tab="' + t.id + '">' + esc(t.label) + "</a>");
