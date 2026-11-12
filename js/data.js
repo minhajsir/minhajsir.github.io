@@ -350,10 +350,12 @@ const STUDENT_GROUPS = [
     projects: [
       { title: "Augmented Reality EXHIBIT", by: "BTCM students", link: "https://youtu.be/bVdjvLoFJgE", note: "" }
     ] },
-  { title: "Documentaries, corporate films and digital storytelling",
+  { title: "Digital storytelling",
     who: "Bachelor of Journalism and Mass Communication",
-    text: "Supervised projects across research, scripting, storyboarding, cinematography, editing and portfolio presentation, to industry standard.",
-    projects: [] },
+    text: "Supervised and mentored students in initiating and executing a student-led digital publishing project, focusing on the creation of digital magazines and comics for the school.",
+    projects: [
+       { title: "Digital magazine Project", by: "BJMC students at UPES", link: "https://theviewpointsomm.blogspot.com/", note: "" }
+           ] },
   { title: "Digital comic on Computational Media careers",
     who: "Master's students",
     text: "Postgraduate students conceived and produced a digital comic about student perspectives on Computational Media education and career pathways, combining narrative development, character design and digital illustration.",
