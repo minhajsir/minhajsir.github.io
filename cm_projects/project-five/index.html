@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Air Calligraphy</title>
+<style>
+:root{--bg:#f6f3ee;--fg:#1f1a14;--muted:#6a5f52;--card:#fff;--accent:#9a3412;--line:#ddd3c4}
+@media (prefers-color-scheme:dark){:root{--bg:#15120f;--fg:#efe7da;--muted:#b0a392;--card:#201b16;--accent:#fb923c;--line:#352d24}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
+.w{max-width:860px;margin:0 auto;padding:0 16px 36px}
+h1{margin:22px 0 2px;font-size:1.65rem}
+.sub{margin:0 0 12px;color:var(--muted)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+button,select{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.msg{color:var(--muted);font-size:.9rem}
+.stage{position:relative;aspect-ratio:4/3;background:#fbf6ea;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.stage video{object-fit:cover;transform:scaleX(-1);opacity:0}
+.stage.cam video{opacity:.3}
+#cur{touch-action:none;cursor:crosshair}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 16px;align-items:end}
+.grid label{display:block;font-size:.8rem;color:var(--muted)}
+.grid select,.grid input[type=range]{width:100%}
+.grid input{accent-color:var(--accent)}
+.sw{display:flex;gap:6px}.sw button{width:30px;height:30px;padding:0;border-radius:50%}
+.sw button.sel{outline:3px solid var(--accent);outline-offset:2px}
+.how{font-size:.88rem;color:var(--muted);margin:12px 0 0}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Air Calligraphy</h1>
+  <p class="sub">Write in the air with your index finger. Slow moves make thick brush strokes, quick flicks make thin ones, and symmetry mode turns your hand into a rangoli maker.</p>
+  <div class="bar">
+    <button id="camBtn">Use camera (hand tracking)</button><button id="mouseBtn" class="on">Use mouse or touch</button><span class="msg" id="status">Mouse mode: drag on the canvas to draw.</span>
+  </div>
+  <div class="stage" id="stage"><video id="vid" playsinline muted></video><canvas id="ink" width="800" height="600"></canvas><canvas id="cur" width="800" height="600"></canvas></div>
+  <div class="bar" style="margin-top:10px"><button id="undo">Undo</button><button id="clear">Clear</button><button id="save">Save PNG</button></div>
+  <div class="card"><div class="grid">
+    <div><label for="sym">Symmetry (rangoli mode)</label><select id="sym"><option value="1">Off</option><option value="2">2-fold</option><option value="4">4-fold</option><option value="6">6-fold</option><option value="8" selected>8-fold</option><option value="12">12-fold</option></select></div>
+    <div><label><input type="checkbox" id="mirror"> Mirror each copy (kaleidoscope)</label></div>
+    <div><label for="size">Brush size: <span id="sizeV">18</span></label><input id="size" type="range" min="6" max="40" value="18"></div>
+    <div><label for="sens">Pressure effect: <span id="sensV">1</span></label><input id="sens" type="range" min="0.4" max="2.5" step="0.1" value="1"></div>
+    <div><label>Colour</label><div class="sw" id="sw"></div></div>
+    <div><label><input type="checkbox" id="rainbow"> Rainbow ink</label></div>
+    <div><label for="paper">Paper</label><select id="paper"><option value="cream">Cream</option><option value="night">Night</option></select></div>
+    <div><label><input type="checkbox" id="showcam"> Show camera behind drawing</label></div>
+  </div></div>
+  <p class="how"><b>Hand mode gestures:</b> point with your index finger, with the other fingers folded, to draw. Open your whole hand, or make a fist, to lift the pen. Keep your hand inside the camera view and well lit. Camera pictures stay in your browser and are never uploaded. The camera needs a secure (https) page, which GitHub Pages provides.</p>
+</div>
+<script type="module">
+const $ = id => document.getElementById(id), W = 800, H = 600;
+const ink = $('ink'), g = ink.getContext('2d'), cur = $('cur').getContext('2d'), vid = $('vid');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), lerp = (a, b, t) => a + (b - a) * t;
+const O = { mode: 'mouse', N: 8, mirror: false, color: '#1a1a1a', rainbow: false, size: 18, sens: 1, paper: 'cream' };
+const PAPER = { cream: '#fbf6ea', night: '#10141f' };
+const P = { down: false, x: W / 2, y: H / 2, px: 0, py: 0, mx: 0, my: 0, t: 0, v: 0, w: 10, hue: 0, show: false };
+g.lineCap = 'round'; g.lineJoin = 'round';
+
+/* Symmetry: every stroke segment is copied around the centre of the canvas (and optionally mirrored) */
+function copies() { const out = []; for (let k = 0; k < O.N; k++) { const a = k * 2 * Math.PI / O.N; out.push([a, false]); if (O.mirror) out.push([a, true]); } return out; }
+function tf(p, a, m) { let x = p[0] - W / 2; const y0 = p[1] - H / 2; if (m) x = -x; const c = Math.cos(a), s = Math.sin(a); return [x * c - y0 * s + W / 2, x * s + y0 * c + H / 2]; }
+function seg(a, c, b, w, col) {
+  g.lineWidth = w; g.strokeStyle = col;
+  for (const [ang, m] of copies()) { const A = tf(a, ang, m), C = tf(c, ang, m), B = tf(b, ang, m); g.beginPath(); g.moveTo(A[0], A[1]); g.quadraticCurveTo(C[0], C[1], B[0], B[1]); g.stroke(); }
+}
+const colour = () => O.rainbow ? `hsl(${(P.hue += 1.2) % 360},80%,50%)` : O.color;
+
+/* Pressure-like width: slow finger = thick stroke, fast finger = thin stroke */
+function widthFor(speed) { const k = clamp(speed / 2.2, 0, 1); return lerp(O.size, O.size * 0.12, Math.pow(k, 0.7)); }
+
+/* The pen: smooths the path with quadratic curves between midpoints */
+const snaps = []; function snap() { snaps.push(g.getImageData(0, 0, W, H)); if (snaps.length > 16) snaps.splice(1, 1); }
+function pen(x, y, t, down) {
+  P.x = x; P.y = y; P.show = true;
+  if (down) {
+    if (!P.down) { P.px = P.mx = x; P.py = P.my = y; P.v = 0; P.w = O.size * 0.6; P.t = t; }
+    else {
+      const dt = Math.max(8, t - P.t), v = Math.hypot(x - P.px, y - P.py) / dt;
+      P.v += (v * O.sens - P.v) * 0.3; P.w += (widthFor(P.v) - P.w) * 0.25;
+      const mx = (P.px + x) / 2, my = (P.py + y) / 2;
+      seg([P.mx, P.my], [P.px, P.py], [mx, my], P.w, colour());
+      P.px = x; P.py = y; P.mx = mx; P.my = my; P.t = t;
+    }
+  } else if (P.down) snap();
+  P.down = down;
+}
+
+/* Hand pose from MediaPipe landmarks: pointing = draw, open hand or fist = lift */
+const dd = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const ext = (L, tip, pip) => dd(L[tip], L[0]) > dd(L[pip], L[0]) * 1.1;
+function pose(L) { const i = ext(L, 8, 6), m = ext(L, 12, 10), r = ext(L, 16, 14), p = ext(L, 20, 18); return i && !m && !r && !p ? 'draw' : (i && m && r && p ? 'open' : 'rest'); }
+let stable = 'rest', cand = 'rest', count = 0, sm = null, landmarker = null, stream = null, lastVT = -1;
+function onHand(res, now) {
+  if (res.landmarks && res.landmarks.length) {
+    const L = res.landmarks[0], raw = { x: (1 - L[8].x) * W, y: L[8].y * H };
+    sm = sm ? { x: lerp(sm.x, raw.x, 0.45), y: lerp(sm.y, raw.y, 0.45) } : raw;
+    const c = pose(L); if (c === cand) count++; else { cand = c; count = 1; } if (count >= 2) stable = cand;
+    pen(sm.x, sm.y, now, stable === 'draw');
+    $('status').textContent = stable === 'draw' ? 'Drawing: slow = thick, fast = thin' : 'Pen up: point with one finger to draw';
+  } else { sm = null; stable = 'rest'; cand = 'rest'; count = 0; if (P.down) pen(P.x, P.y, now, false); P.show = false; $('status').textContent = 'No hand seen: show your hand to the camera'; }
+}
+async function startCamera() {
+  $('status').textContent = 'Loading hand tracking (first time takes a few seconds)...';
+  try {
+    const V = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const { HandLandmarker, FilesetResolver } = await import(V);
+    const fileset = await FilesetResolver.forVisionTasks(V + '/wasm');
+    landmarker = landmarker || await HandLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate: 'GPU' }, runningMode: 'VIDEO', numHands: 1 });
+    stream = stream || await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+    vid.srcObject = stream; await vid.play(); setMode('hand');
+  } catch (e) { setMode('mouse'); $('status').textContent = 'Camera or hand tracking is not available (' + (e.message || e.name) + '). Mouse mode is on instead.'; }
+}
+function setMode(m) {
+  O.mode = m; P.show = false; if (P.down) pen(P.x, P.y, performance.now(), false);
+  $('camBtn').classList.toggle('on', m === 'hand'); $('mouseBtn').classList.toggle('on', m === 'mouse');
+  if (m === 'mouse') $('status').textContent = 'Mouse mode: drag on the canvas to draw.';
+  $('stage').classList.toggle('cam', m === 'hand' && $('showcam').checked);
+}
+$('camBtn').onclick = startCamera; $('mouseBtn').onclick = () => setMode('mouse');
+$('showcam').onchange = () => setMode(O.mode);
+
+/* Mouse and touch */
+const pos = e => { const b = cur.canvas.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * W, (e.clientY - b.top) / b.height * H]; };
+cur.canvas.addEventListener('pointerdown', e => { if (O.mode !== 'mouse') return; cur.canvas.setPointerCapture(e.pointerId); const [x, y] = pos(e); pen(x, y, performance.now(), true); });
+cur.canvas.addEventListener('pointermove', e => { if (O.mode !== 'mouse') return; const [x, y] = pos(e); if (P.down) pen(x, y, performance.now(), true); else { P.x = x; P.y = y; P.show = true; } });
+cur.canvas.addEventListener('pointerup', () => { if (O.mode === 'mouse' && P.down) pen(P.x, P.y, performance.now(), false); });
+cur.canvas.addEventListener('pointerleave', () => { if (!P.down) P.show = false; });
+
+/* Controls */
+const SW = ['#1a1a1a', '#c0392b', '#1f2a6b', '#c8961e', '#f5f5f5'];
+SW.forEach((c, i) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Colour ' + c); b.onclick = () => { O.color = c; $('rainbow').checked = false; O.rainbow = false; [...$('sw').children].forEach((x, j) => x.classList.toggle('sel', j === i)); }; $('sw').appendChild(b); });
+$('sw').children[0].classList.add('sel');
+$('sym').onchange = e => O.N = +e.target.value; $('mirror').onchange = e => O.mirror = e.target.checked; $('rainbow').onchange = e => O.rainbow = e.target.checked;
+$('size').oninput = e => { O.size = +e.target.value; $('sizeV').textContent = e.target.value; };
+$('sens').oninput = e => { O.sens = +e.target.value; $('sensV').textContent = e.target.value; };
+$('paper').onchange = e => { O.paper = e.target.value; $('stage').style.background = PAPER[O.paper]; if (O.paper === 'night' && O.color === SW[0]) $('sw').children[4].click(); if (O.paper === 'cream' && O.color === SW[4]) $('sw').children[0].click(); };
+$('undo').onclick = () => { if (snaps.length > 1) { snaps.pop(); g.putImageData(snaps[snaps.length - 1], 0, 0); } };
+$('clear').onclick = () => { g.clearRect(0, 0, W, H); snap(); };
+$('save').onclick = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = PAPER[O.paper]; x.fillRect(0, 0, W, H); x.drawImage(ink, 0, 0);
+  c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'air-calligraphy.png'; a.click(); URL.revokeObjectURL(a.href); }); };
+
+/* Main loop: read the hand, then draw the pen cursor and symmetry guides */
+function frame() {
+  if (O.mode === 'hand' && landmarker && vid.readyState >= 2 && vid.currentTime !== lastVT) { lastVT = vid.currentTime; onHand(landmarker.detectForVideo(vid, performance.now()), performance.now()); }
+  cur.clearRect(0, 0, W, H);
+  const dark = O.paper === 'night' ? '255,255,255' : '40,30,20';
+  if (O.N > 1) { cur.strokeStyle = `rgba(${dark},0.07)`; cur.lineWidth = 1; cur.beginPath(); for (let k = 0; k < O.N; k++) { const a = k * 2 * Math.PI / O.N; cur.moveTo(W / 2, H / 2); cur.lineTo(W / 2 + Math.cos(a) * 500, H / 2 + Math.sin(a) * 500); } cur.stroke(); }
+  if (P.show) {
+    for (const [ang, m] of copies()) { const q = tf([P.x, P.y], ang, m); cur.beginPath(); cur.arc(q[0], q[1], P.down ? 4 : 3, 0, 6.283); cur.fillStyle = `rgba(${dark},${P.down ? 0.5 : 0.25})`; cur.fill(); }
+    cur.beginPath(); cur.arc(P.x, P.y, (P.down ? P.w / 2 : O.size * 0.4) + 5, 0, 6.283); cur.strokeStyle = '#ea580c'; cur.lineWidth = 2; cur.stroke();
+  }
+  requestAnimationFrame(frame);
+}
+snap(); frame();
+window.__air = { pen, pose, widthFor, copies, tf, O, P };   // exposed for the tests in the README
+</script>
+</body>
+</html>

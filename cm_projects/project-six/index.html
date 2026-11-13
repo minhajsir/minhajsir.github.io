@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generative Art Gallery</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f27;--muted:#5b6575;--card:#fff;--accent:#2e75b6;--line:#d5dae1}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e8ebf0;--muted:#9aa5b5;--card:#1b2028;--accent:#6cb2f0;--line:#2c333f}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
+header,main,nav{max-width:700px;margin:0 auto;padding:0 16px}
+header{padding-top:28px}
+h1{margin:0 0 4px;font-size:1.7rem}
+header p{margin:0;color:var(--muted)}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;margin-bottom:14px}
+button,input{font:inherit;color:var(--fg)}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#stage{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;min-height:280px}
+#stage canvas{display:block;max-width:100%;height:auto!important}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+input{width:110px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+#about{color:var(--muted);margin-bottom:40px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Generative Art Gallery</h1>
+  <p>Three algorithmic artworks built with p5.js. Change the seed, regenerate, and save what you like.</p>
+</header>
+<nav id="tabs" aria-label="Artworks"></nav>
+<main>
+  <div id="stage"></div>
+  <div class="controls">
+    <label>Seed <input id="seed" type="number" value="2026"></label>
+    <button id="regen">Regenerate</button>
+    <button id="save">Save PNG</button>
+  </div>
+  <p id="about"></p>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const stage = document.getElementById('stage');
+const seedEl = document.getElementById('seed');
+const size = () => Math.max(280, Math.min(640, stage.clientWidth || 640));
+
+/* 1. FLOW FIELD: particles follow angles read from Perlin noise */
+function flowField(seed) { return p => {
+  let pts = [], S;
+  p.setup = () => {
+    S = size(); p.createCanvas(S, S);
+    p.colorMode(p.HSB, 360, 100, 100, 100);
+    p.randomSeed(seed); p.noiseSeed(seed);
+    const h = p.random(360);
+    p.background(h, 35, 10);
+    for (let i = 0; i < 1200; i++)
+      pts.push({ x: p.random(S), y: p.random(S), h: (h + p.random(-40, 40) + 360) % 360 });
+  };
+  p.draw = () => {
+    for (const q of pts) {
+      const a = p.noise(q.x * 0.003, q.y * 0.003) * p.TWO_PI * 2;
+      const nx = q.x + Math.cos(a) * 1.5, ny = q.y + Math.sin(a) * 1.5;
+      p.stroke(q.h, 70, 95, 12);
+      p.line(q.x, q.y, nx, ny);
+      q.x = nx; q.y = ny;
+      if (q.x < 0 || q.x > S || q.y < 0 || q.y > S) { q.x = p.random(S); q.y = p.random(S); }
+    }
+    if (p.frameCount > 600) p.noLoop();
+  };
+}; }
+
+/* 2. L-SYSTEM TREE: rewrite a string, then interpret it as turtle graphics */
+function lTree(seed) { return p => {
+  p.setup = () => { p.createCanvas(size(), size()); p.colorMode(p.HSB, 360, 100, 100, 100); p.noLoop(); };
+  p.draw = () => {
+    const S = p.width;
+    p.randomSeed(seed);
+    const ang = p.radians(p.random(18, 32)), hue = p.random(360);
+    let s = 'X';
+    for (let i = 0; i < 5; i++)
+      s = s.replace(/[XF]/g, c => c === 'X' ? 'F+[[X]-X]-F[-FX]+X' : 'FF');
+
+    let x = 0, y = 0, a = -Math.PI / 2, maxD = 1;
+    let minX = 0, maxX = 0, minY = 0, maxY = 0;
+    const st = [], seg = [];
+    for (const c of s) {
+      if (c === 'F') {
+        const nx = x + Math.cos(a), ny = y + Math.sin(a);
+        seg.push([x, y, nx, ny, st.length]);
+        maxD = Math.max(maxD, st.length);
+        x = nx; y = ny;
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      } else if (c === '+') a += ang;
+      else if (c === '-') a -= ang;
+      else if (c === '[') st.push([x, y, a]);
+      else if (c === ']') [x, y, a] = st.pop();
+    }
+    // scale the tree to fit the canvas
+    const w = maxX - minX, h = maxY - minY, k = Math.min(S * 0.9 / w, S * 0.9 / h);
+    const ox = (S - w * k) / 2 - minX * k, oy = (S - h * k) / 2 - minY * k;
+    p.background(hue, 25, 10);
+    for (const [x1, y1, x2, y2, d] of seg) {
+      p.stroke((hue + 120 * d / maxD) % 360, 60, 95, 80);
+      p.strokeWeight(Math.max(0.4, 1.8 - d * 0.18));
+      p.line(x1 * k + ox, y1 * k + oy, x2 * k + ox, y2 * k + oy);
+    }
+  };
+}; }
+
+/* 3. JULIA SET: move the mouse (or drag on a phone) to morph the fractal */
+function julia(seed) { return p => {
+  let S, theta, rad;
+  const MAX = 60;
+  p.setup = () => {
+    S = size(); p.createCanvas(S, S); p.pixelDensity(1); p.noLoop();
+    p.randomSeed(seed);
+    theta = p.random(p.TWO_PI); rad = p.random(0.7, 0.8);
+  };
+  const move = () => {
+    if (p.mouseX < 0 || p.mouseY < 0 || p.mouseX > S || p.mouseY > S) return;
+    theta = p.map(p.mouseX, 0, S, 0, p.TWO_PI);
+    rad = p.map(p.mouseY, 0, S, 0.5, 0.95);
+    p.redraw();
+  };
+  p.mouseMoved = move; p.mouseDragged = move;
+  p.draw = () => {
+    const cx = rad * Math.cos(theta), cy = rad * Math.sin(theta);
+    p.loadPixels();
+    for (let y = 0; y < S; y += 2) for (let x = 0; x < S; x += 2) {
+      let zx = (x / S - 0.5) * 3.2, zy = (y / S - 0.5) * 3.2, i = 0;
+      while (zx * zx + zy * zy < 4 && i < MAX) {
+        const t = zx * zx - zy * zy + cx; zy = 2 * zx * zy + cy; zx = t; i++;
+      }
+      let r = 8, g = 10, b = 20;
+      if (i < MAX) {
+        const v = i / MAX;
+        r = 9 * (1 - v) * v * v * v * 255;
+        g = 15 * (1 - v) * (1 - v) * v * v * 255;
+        b = 8.5 * (1 - v) * (1 - v) * (1 - v) * v * 255;
+      }
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+        const idx = 4 * ((y + dy) * S + (x + dx));
+        p.pixels[idx] = r; p.pixels[idx + 1] = g; p.pixels[idx + 2] = b; p.pixels[idx + 3] = 255;
+      }
+    }
+    p.updatePixels();
+  };
+}; }
+
+const SKETCHES = [
+  { name: 'Flow field', make: flowField, about: 'Thousands of particles follow angles read from Perlin noise. Each seed gives a different current and colour palette.' },
+  { name: 'L-system tree', make: lTree, about: 'A short string is rewritten five times by simple rules, then drawn with turtle graphics. The seed changes the branching angle and colours.' },
+  { name: 'Julia set', make: julia, about: 'A fractal from complex numbers. Move your mouse over the canvas (or drag on a phone) to change the constant and morph the shape.' }
+];
+
+let current = null, active = 0;
+const tabs = document.getElementById('tabs');
+SKETCHES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = s.name; b.onclick = () => show(i); tabs.appendChild(b);
+});
+
+function show(i) {
+  active = i;
+  if (current) current.remove();
+  stage.innerHTML = '';
+  current = new p5(SKETCHES[i].make(Number(seedEl.value) || 1), stage);
+  [...tabs.children].forEach((b, j) => b.classList.toggle('on', j === i));
+  document.getElementById('about').textContent = SKETCHES[i].about;
+}
+document.getElementById('regen').onclick = () => { seedEl.value = Math.floor(Math.random() * 99999); show(active); };
+document.getElementById('save').onclick = () =>
+  current.saveCanvas(SKETCHES[active].name.replace(/\s+/g, '-').toLowerCase() + '-' + seedEl.value, 'png');
+seedEl.addEventListener('change', () => show(active));
+show(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyderabad Sky: data-driven art</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f27;--muted:#5b6575;--card:#fff;--accent:#2563eb;--line:#d5dae1}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e8ebf0;--muted:#9aa5b5;--card:#1b2028;--accent:#60a5fa;--line:#2c333f}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
+.w{max-width:860px;margin:0 auto;padding:0 16px}
+h1{margin:22px 0 2px;font-size:1.6rem}
+.sub{margin:0 0 14px;color:var(--muted)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+select,button{font:inherit;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+canvas{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--line);background:#000}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px}
+.grid label{display:block;font-size:.8rem;color:var(--muted)}
+.grid input{width:100%;accent-color:var(--accent)}
+.data{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.9rem}
+.data b{font-weight:600}
+.small{font-size:.78rem;color:var(--muted);margin:10px 0 30px}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Hyderabad Sky</h1>
+  <p class="sub">Art that is painted by today’s weather and air quality. Real data in, colour and motion out.</p>
+  <div class="bar">
+    <select id="city" aria-label="City"></select>
+    <button data-p="0" class="on">Sky</button><button data-p="1">Wind field</button><button data-p="2">Air bloom</button>
+    <button id="save">Save PNG</button>
+  </div>
+  <canvas id="cv" width="800" height="500"></canvas>
+  <div class="card"><div class="data" id="data"></div><div class="small" id="status" style="margin:8px 0 0"></div></div>
+  <div class="card">
+    <label><input type="checkbox" id="live" checked> Use live data (untick to play with the values)</label>
+    <div class="grid" style="margin-top:10px" id="sliders"></div>
+  </div>
+  <p class="small">Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0). Air quality: Open-Meteo Air Quality API, based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service. Free for non-commercial use.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id), cv = $('cv'), ctx = cv.getContext('2d'), W = 800, H = 500;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), lerp = (a, b, t) => a + (b - a) * t, TAU = Math.PI * 2;
+const mix = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t))), rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+const rng = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const CITIES = { Hyderabad: [17.385, 78.4867], Delhi: [28.6139, 77.209], Mumbai: [19.076, 72.8777], Chennai: [13.0827, 80.2707], Bengaluru: [12.9716, 77.5946], Kolkata: [22.5726, 88.3639] };
+Object.keys(CITIES).forEach(c => $('city').add(new Option(c, c)));
+
+// The numbers that drive every artwork (sample values until live data arrives)
+const S = { temp: 28, hum: 55, cloud: 40, wind: 12, dir: 250, rain: 0, aqi: 90, pm25: 30, pm10: 55, hour: 16.5, src: 'sample' };
+const SL = [['temp', 'Temperature °C', 5, 45, 1], ['cloud', 'Cloud cover %', 0, 100, 1], ['wind', 'Wind km/h', 0, 60, 1], ['rain', 'Rain mm', 0, 10, 0.5], ['aqi', 'US AQI', 0, 300, 1], ['hour', 'Hour of day', 0, 24, 0.25]];
+$('sliders').innerHTML = SL.map(([k, n, a, b, s]) => `<div><label>${n}: <span id="v_${k}"></span></label><input type="range" id="s_${k}" min="${a}" max="${b}" step="${s}"></div>`).join('');
+const sync = () => SL.forEach(([k]) => { $('s_' + k).value = S[k]; $('v_' + k).textContent = S[k]; });
+SL.forEach(([k]) => $('s_' + k).addEventListener('input', e => { $('live').checked = false; S[k] = +e.target.value; S.src = 'manual'; sync(); showData(); }));
+
+function showData() {
+  const AQ = aqCat(S.aqi);
+  $('data').innerHTML = [['Temp', S.temp + '°C'], ['Humidity', S.hum + '%'], ['Cloud', S.cloud + '%'], ['Wind', S.wind + ' km/h from ' + S.dir + '°'], ['Rain', S.rain + ' mm'], ['US AQI', S.aqi + ' (' + AQ[1] + ')'], ['PM2.5', S.pm25 + ' µg/m³'], ['PM10', S.pm10 + ' µg/m³']].map(([a, b]) => `<span>${a}: <b>${b}</b></span>`).join('');
+}
+async function load() {
+  const [lat, lon] = CITIES[$('city').value];
+  $('status').textContent = 'Loading live data…';
+  try {
+    const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=auto`)).json();
+    const a = await (await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,pm10&timezone=auto`)).json();
+    const c = w.current, q = a.current || {}, r = (v, d = 0) => Math.round(v * 10 ** d) / 10 ** d;
+    if (!$('live').checked) { $('status').textContent = 'Live data loaded, but you are in manual mode.'; return; }
+    Object.assign(S, { temp: r(c.temperature_2m), hum: r(c.relative_humidity_2m), cloud: r(c.cloud_cover), wind: r(c.wind_speed_10m), dir: r(c.wind_direction_10m),
+      rain: r(c.precipitation, 1), aqi: r(q.us_aqi ?? S.aqi), pm25: r(q.pm2_5 ?? S.pm25, 1), pm10: r(q.pm10 ?? S.pm10, 1), src: 'live' });
+    const t = c.time.split('T')[1].split(':'); S.hour = +t[0] + t[1] / 60;
+    $('status').textContent = 'Live data for ' + $('city').value + ', observed ' + c.time.replace('T', ' ') + ' local time.';
+  } catch (e) { $('status').textContent = 'Could not reach the data service, so sample values are shown. Check your connection and press Refresh by changing the city.'; }
+  sync(); showData();
+}
+$('city').onchange = () => { $('live').checked = true; load(); };
+$('live').onchange = () => { if ($('live').checked) load(); };
+setInterval(() => $('live').checked && load(), 15 * 60 * 1000);
+
+/* PIECE 1: SKY. Colour from hour and clouds, haze from AQI, clouds drift with the wind, rain from precipitation */
+let clouds = [], drops = [];
+function skyPiece(t) {
+  const alt = Math.sin(Math.PI * (S.hour - 6) / 12), night = [[8, 12, 40], [27, 42, 90]], twi = [[70, 50, 110], [240, 140, 80]], day = [[61, 143, 224], [191, 224, 255]];
+  let top, bot;
+  if (alt > 0) { const k = clamp(alt * 3, 0, 1); top = mix(twi[0], day[0], k); bot = mix(twi[1], day[1], k); }
+  else { const k = clamp(1 + alt * 4, 0, 1); top = mix(night[0], twi[0], k); bot = mix(night[1], twi[1], k); }
+  const g = clamp(S.cloud / 100, 0, 1) * (alt > 0 ? 0.5 : 0.25); top = mix(top, [120, 128, 140], g); bot = mix(bot, [150, 156, 166], g);
+  const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, rgb(top)); sky.addColorStop(1, rgb(bot)); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // sun or moon
+  const dt = ((S.hour - 6 + 24) % 24) / 12, sx = (dt % 1) * W, sy = H * 0.78 - Math.sin(Math.PI * (dt % 1)) * H * 0.55, sun = dt <= 1;
+  const vis = clamp(1 - S.cloud * 0.007 - S.aqi * 0.0015, 0.15, 1), warm = clamp((S.temp - 15) / 30, 0, 1);
+  const gl = ctx.createRadialGradient(sx, sy, 5, sx, sy, 110); const col = sun ? mix([255, 235, 170], [255, 150, 60], warm) : [220, 230, 255];
+  gl.addColorStop(0, `rgba(${col},${0.9 * vis})`); gl.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = gl; ctx.fillRect(sx - 120, sy - 120, 240, 240);
+  ctx.fillStyle = `rgba(${col},${vis})`; ctx.beginPath(); ctx.arc(sx, sy, sun ? 30 : 22, 0, TAU); ctx.fill();
+  // clouds
+  const n = S.cloud > 3 ? Math.round(S.cloud / 100 * 14) + 1 : 0, r = rng(7);
+  if (clouds.length !== n) clouds = Array.from({ length: n }, () => ({ x: r() * W, y: 30 + r() * 230, s: 0.6 + r() * 1.1 }));
+  const vx = Math.sin((S.dir + 180) * Math.PI / 180) * S.wind * 0.02, ccol = alt > 0 ? (S.rain > 0 ? [135, 140, 150] : [255, 255, 255]) : [95, 105, 135];
+  for (const c of clouds) {
+    c.x = (c.x + vx + 1.0 * 0 + W + 160) % (W + 160) - 80; ctx.fillStyle = `rgba(${ccol},0.8)`;
+    for (const [dx, dy, rr] of [[0, 0, 28], [30, 8, 22], [-30, 8, 22], [14, -14, 24], [-14, -12, 20]]) { ctx.beginPath(); ctx.arc(c.x + dx * c.s, c.y + dy * c.s, rr * c.s, 0, TAU); ctx.fill(); }
+  }
+  // rain
+  const nd = S.rain > 0 ? Math.min(300, 60 + S.rain * 60) : 0; while (drops.length < 300) drops.push({ x: Math.random() * W, y: Math.random() * H });
+  ctx.strokeStyle = 'rgba(200,220,255,0.55)'; ctx.lineWidth = 1.2; ctx.beginPath();
+  for (let i = 0; i < nd; i++) { const d = drops[i]; d.y += 9; d.x += vx * 8; if (d.y > H) { d.y = -10; d.x = Math.random() * W; } ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + vx * 3, d.y + 12); } ctx.stroke();
+  // haze from air pollution
+  ctx.fillStyle = `rgba(176,146,102,${clamp(S.aqi / 300, 0, 1) * 0.6})`; ctx.fillRect(0, 0, W, H);
+  // Charminar-style silhouette and Deccan hills
+  const dark = rgb(mix(bot, [10, 12, 25], 0.8)); ctx.fillStyle = dark; ctx.beginPath(); ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 10) ctx.lineTo(x, H - 40 - 22 * Math.sin(x * 0.012) - 12 * Math.sin(x * 0.031 + 1)); ctx.lineTo(W, H); ctx.fill();
+  const cx = W / 2; ctx.fillRect(cx - 55, H - 120, 110, 80); ctx.fillRect(cx - 18, H - 140, 36, 20);
+  for (const dx of [-62, 48]) { ctx.fillRect(cx + dx, H - 175, 14, 135); ctx.beginPath(); ctx.arc(cx + dx + 7, H - 178, 9, Math.PI, 0); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(cx, H - 142, 16, Math.PI, 0); ctx.fill();
+}
+
+/* PIECE 2: WIND FIELD. Direction and speed from the wind, colour from temperature, mood from AQI */
+let pts = [];
+function windPiece(t, first) {
+  const bg = mix([10, 14, 30], [62, 46, 30], clamp(S.aqi / 300, 0, 1));
+  if (first || !pts.length) { pts = Array.from({ length: 900 }, () => ({ x: Math.random() * W, y: Math.random() * H })); ctx.fillStyle = rgb(bg); ctx.fillRect(0, 0, W, H); }
+  ctx.fillStyle = `rgba(${bg},0.07)`; ctx.fillRect(0, 0, W, H);
+  const hue = lerp(210, 5, clamp((S.temp - 10) / 32, 0, 1)), th = (S.dir + 180) * Math.PI / 180, base = Math.atan2(-Math.cos(th), Math.sin(th));
+  const sp = 0.6 + S.wind * 0.07, wob = 0.5 + S.wind / 40, light = 62 - S.aqi / 12;
+  ctx.lineWidth = 1.3; ctx.strokeStyle = `hsla(${hue},85%,${light}%,0.55)`; ctx.beginPath();
+  for (const p of pts) {
+    const a = base + (Math.sin(p.x * 0.008 + t * 0.0003) + Math.cos(p.y * 0.011 - t * 0.0002)) * wob, nx = p.x + Math.cos(a) * sp * 2, ny = p.y + Math.sin(a) * sp * 2;
+    ctx.moveTo(p.x, p.y); ctx.lineTo(nx, ny); p.x = nx; p.y = ny;
+    if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) { p.x = Math.random() * W; p.y = Math.random() * H; }
+  } ctx.stroke();
+}
+
+/* PIECE 3: AIR BLOOM. Rings breathe with the wind, specks are PM2.5, colour is the AQI category */
+const AQC = [[50, 'Good', '#00e400'], [100, 'Moderate', '#e6d800'], [150, 'Unhealthy for sensitive groups', '#ff7e00'], [200, 'Unhealthy', '#ff2a2a'], [300, 'Very unhealthy', '#b05bbd'], [999, 'Hazardous', '#c1123b']];
+const aqCat = v => AQC.find(c => v <= c[0]) || AQC[5];
+const rs = rng(11), specks = Array.from({ length: 500 }, () => ({ r: 40 + rs() * 300, a: rs() * TAU, s: 0.0005 + rs() * 0.002, z: 1 + rs() * 2 }));
+function bloomPiece(t) {
+  const cat = aqCat(S.aqi), colr = cat[2]; ctx.fillStyle = '#0b0f1c'; ctx.fillRect(0, 0, W, H);
+  const br = 0.0008 + S.wind * 0.00004; ctx.lineWidth = 2.5;
+  for (let i = 0; i < 7; i++) { ctx.strokeStyle = colr; ctx.globalAlpha = 0.75 - i * 0.08; ctx.beginPath(); ctx.arc(W / 2, H / 2, 40 + i * 28 + Math.sin(t * br + i * 0.6) * 10, 0, TAU); ctx.stroke(); }
+  ctx.globalAlpha = 0.85; ctx.fillStyle = colr; const n = Math.min(500, Math.round(S.pm25 * 4 + 20));
+  for (let i = 0; i < n; i++) { const s = specks[i]; s.a += s.s * (1 + S.wind / 10); ctx.beginPath(); ctx.arc(W / 2 + Math.cos(s.a) * s.r * 1.2, H / 2 + Math.sin(s.a) * s.r * 0.75, s.z, 0, TAU); ctx.fill(); }
+  ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '700 44px system-ui,sans-serif'; ctx.fillText(Math.round(S.aqi), W / 2, H / 2 + 10);
+  ctx.font = '16px system-ui,sans-serif'; ctx.fillText('US AQI: ' + cat[1], W / 2, H / 2 + 36);
+}
+
+let piece = 0, first = true;
+document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { piece = +b.dataset.p; first = true; document.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x === b)); });
+$('save').onclick = () => cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `hyderabad-sky-${['sky', 'wind', 'bloom'][piece]}.png`; a.click(); URL.revokeObjectURL(a.href); });
+function frame(t) { [skyPiece, windPiece, bloomPiece][piece](t, first); first = false; requestAnimationFrame(frame); }
+sync(); showData(); load(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

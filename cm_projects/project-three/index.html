@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game of Life Sonifier</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f27;--muted:#5b6575;--card:#fff;--accent:#7c3aed;--line:#d5dae1}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e8ebf0;--muted:#9aa5b5;--card:#1b2028;--accent:#a78bfa;--line:#2c333f}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
+.w{max-width:860px;margin:0 auto;padding:0 16px 30px}
+h1{margin:22px 0 2px;font-size:1.6rem}
+.sub{margin:0 0 14px;color:var(--muted)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+select,button{font:inherit;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.main{background:var(--accent);border-color:var(--accent);color:#fff;min-width:84px}
+canvas{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--line);touch-action:none;cursor:crosshair}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 16px}
+.grid label{display:block;font-size:.8rem;color:var(--muted)}
+.grid select,.grid input{width:100%}
+.grid input{accent-color:var(--accent)}
+.stats{font-size:.9rem;color:var(--muted);margin-top:8px}
+.how{font-size:.88rem;color:var(--muted);margin:12px 0 0}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Game of Life Sonifier</h1>
+  <p class="sub">Draw live cells, press Play, and hear the pattern. A playhead sweeps left to right; every live cell it touches plays a note.</p>
+  <div class="bar">
+    <button class="main" id="play">Play</button>
+    <button id="rand">Random</button><button id="glider">Glider</button><button id="acorn">Acorn</button><button id="clear">Clear</button>
+  </div>
+  <canvas id="cv" width="800" height="400"></canvas>
+  <div class="stats" id="stats"></div>
+  <div class="card"><div class="grid">
+    <div><label for="scale">Scale</label><select id="scale"></select></div>
+    <div><label for="root">Key</label><select id="root"></select></div>
+    <div><label for="wave">Sound</label><select id="wave"><option>triangle</option><option>sine</option><option>square</option><option>sawtooth</option></select></div>
+    <div><label for="evo">Pattern evolves</label><select id="evo"><option value="0">Never (loop)</option><option value="4">Every 4 steps</option><option value="32" selected>Every sweep</option><option value="64">Every 2 sweeps</option></select></div>
+    <div><label for="bpm">Tempo: <span id="bpmV">120</span> BPM</label><input id="bpm" type="range" min="60" max="240" value="120"></div>
+  </div></div>
+  <p class="how"><b>How to play:</b> click or drag on the grid to add or remove cells. Rows are pitches (higher up is higher). Columns are time. Cells with 2 or 3 neighbours survive, and an empty cell with exactly 3 neighbours is born, so the music keeps changing by itself. Sound starts after you press Play, because browsers need a click first.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id), cv = $('cv'), ctx2d = cv.getContext('2d');
+const COLS = 32, ROWS = 16, CS = 25;
+let grid = Array.from({ length: ROWS }, () => new Uint8Array(COLS)), gen = 0;
+
+// Scales are lists of semitone steps above the key note
+const SCALES = { 'Major pentatonic (Mohanam / Bhupali)': [0, 2, 4, 7, 9], 'Minor pentatonic': [0, 3, 5, 7, 10], 'Malkauns / Hindolam': [0, 3, 5, 8, 10],
+  'Hamsadhwani': [0, 2, 4, 7, 11], 'Major': [0, 2, 4, 5, 7, 9, 11], 'Whole tone': [0, 2, 4, 6, 8, 10] };
+Object.keys(SCALES).forEach(k => $('scale').add(new Option(k, k)));
+['C', 'D', 'E', 'F', 'G', 'A', 'B'].forEach((n, i) => $('root').add(new Option(n, [0, 2, 4, 5, 7, 9, 11][i])));
+const freqOf = row => {               // row 0 is the top row, which is the highest note
+  const sc = SCALES[$('scale').value], i = ROWS - 1 - row;
+  const semis = sc[i % sc.length] + 12 * Math.floor(i / sc.length) + Number($('root').value);
+  return 130.81 * Math.pow(2, semis / 12);   // C3 is 130.81 Hz
+};
+
+/* Game of Life: B3/S23 on a grid that wraps around the edges */
+function evolve() {
+  const next = grid.map(r => new Uint8Array(r));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    let n = 0;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++)
+      if (dr || dc) n += grid[(r + dr + ROWS) % ROWS][(c + dc + COLS) % COLS];
+    next[r][c] = grid[r][c] ? (n === 2 || n === 3 ? 1 : 0) : (n === 3 ? 1 : 0);
+  }
+  grid = next; gen++;
+}
+const place = cells => { grid.forEach(r => r.fill(0)); const r0 = Math.floor(ROWS / 2) - 2, c0 = Math.floor(COLS / 2) - 3; cells.forEach(([r, c]) => grid[(r0 + r) % ROWS][(c0 + c) % COLS] = 1); gen = 0; stats(); };
+$('rand').onclick = () => { grid.forEach(r => r.forEach((_, c) => r[c] = Math.random() < 0.22 ? 1 : 0)); gen = 0; stats(); };
+$('glider').onclick = () => place([[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]]);
+$('acorn').onclick = () => place([[0, 1], [1, 3], [2, 0], [2, 1], [2, 4], [2, 5], [2, 6]]);
+$('clear').onclick = () => { grid.forEach(r => r.fill(0)); gen = 0; stats(); };
+
+/* Sound: a small lookahead scheduler keeps the beat steady */
+let ac, master, playing = false, col = 0, steps = 0, nextTime = 0, timer, queue = [], playCol = -1;
+function initAudio() {
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain(); master.gain.value = 0.7;
+  const comp = ac.createDynamicsCompressor(), delay = ac.createDelay(), fb = ac.createGain(), wet = ac.createGain();
+  delay.delayTime.value = 0.3; fb.gain.value = 0.3; wet.gain.value = 0.25;      // a gentle echo
+  master.connect(comp); master.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(comp); comp.connect(ac.destination);
+}
+function note(freq, t, vol) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = $('wave').value; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5);
+}
+function playColumn(c, t) {
+  let rows = []; for (let r = 0; r < ROWS; r++) if (grid[r][c]) rows.push(r);
+  rows.sort(() => Math.random() - 0.5); rows = rows.slice(0, 5);                // at most 5 notes at once
+  rows.forEach(r => note(freqOf(r), t, 0.3 / Math.sqrt(rows.length)));
+}
+function scheduler() {
+  while (nextTime < ac.currentTime + 0.12) {
+    playColumn(col, nextTime); queue.push({ t: nextTime, c: col });
+    col = (col + 1) % COLS; steps++;
+    const n = Number($('evo').value); if (n && steps % n === 0) evolve();
+    nextTime += 60 / $('bpm').value / 4;                                        // sixteenth notes
+  }
+  timer = setTimeout(scheduler, 25);
+}
+$('play').onclick = () => {
+  if (!ac) initAudio(); ac.resume();
+  playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play';
+  if (playing) { nextTime = ac.currentTime + 0.05; scheduler(); } else { clearTimeout(timer); queue = []; playCol = -1; }
+};
+$('bpm').oninput = () => $('bpmV').textContent = $('bpm').value;
+
+/* Drawing and painting cells with the mouse or finger */
+let paint = null;
+const cellAt = e => { const b = cv.getBoundingClientRect(); return [Math.floor((e.clientY - b.top) / b.height * ROWS), Math.floor((e.clientX - b.left) / b.width * COLS)]; };
+const setCell = e => { const [r, c] = cellAt(e); if (r >= 0 && r < ROWS && c >= 0 && c < COLS && grid[r][c] !== paint) { grid[r][c] = paint; stats(); } };
+cv.addEventListener('pointerdown', e => { const [r, c] = cellAt(e); paint = grid[r][c] ? 0 : 1; cv.setPointerCapture(e.pointerId); setCell(e); });
+cv.addEventListener('pointermove', e => paint !== null && setCell(e));
+cv.addEventListener('pointerup', () => paint = null);
+function stats() { let n = 0; grid.forEach(r => r.forEach(v => n += v)); $('stats').textContent = `Generation ${gen}  |  Live cells ${n}`; }
+function draw() {
+  if (ac) while (queue.length && queue[0].t <= ac.currentTime) playCol = queue.shift().c;
+  ctx2d.fillStyle = '#0b0f1c'; ctx2d.fillRect(0, 0, 800, 400);
+  ctx2d.strokeStyle = 'rgba(255,255,255,0.05)'; ctx2d.beginPath();
+  for (let i = 0; i <= COLS; i++) { ctx2d.moveTo(i * CS, 0); ctx2d.lineTo(i * CS, 400); } for (let i = 0; i <= ROWS; i++) { ctx2d.moveTo(0, i * CS); ctx2d.lineTo(800, i * CS); } ctx2d.stroke();
+  if (playCol >= 0) { ctx2d.fillStyle = 'rgba(255,255,255,0.10)'; ctx2d.fillRect(playCol * CS, 0, CS, 400); }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c]) {
+    const hot = c === playCol; ctx2d.fillStyle = `hsl(${200 + r * 10},85%,${hot ? 78 : 58}%)`;
+    if (hot) { ctx2d.shadowColor = ctx2d.fillStyle; ctx2d.shadowBlur = 14; }
+    ctx2d.fillRect(c * CS + 2, r * CS + 2, CS - 4, CS - 4); ctx2d.shadowBlur = 0;
+  }
+  if (playing) stats();
+  requestAnimationFrame(draw);
+}
+$('acorn').click(); draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heritage Hunt: Charminar and Golconda</title>
+<style>
+:root{--bg:#faf5ec;--fg:#2b2118;--muted:#6b5b4a;--card:#fff;--accent:#b45309;--line:#e3d6c2;--ok:#15803d}
+@media (prefers-color-scheme:dark){:root{--bg:#17130f;--fg:#f1e8da;--muted:#b3a38e;--card:#221c16;--accent:#f59e0b;--line:#3a3025;--ok:#4ade80}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
+.w{max-width:820px;margin:0 auto;padding:0 16px 40px}
+h1{margin:22px 0 2px;font-size:1.65rem}
+.sub{margin:0 0 12px;color:var(--muted)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{font:inherit;padding:8px 13px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.hud{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:.9rem}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(92vw,360px);aspect-ratio:1;margin:12px auto;background:var(--line);padding:2px;border-radius:8px}
+.board.done{gap:0;padding:0}
+.tile{background-size:300% 300%;border:0;border-radius:4px;cursor:pointer;padding:0}
+.tile.blank{background:transparent;cursor:default}
+.board.done .tile{border-radius:0}
+.scene{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line)}
+.hot{fill:transparent;cursor:pointer}
+.found{fill:none;stroke:#22c55e;stroke-width:3}
+@keyframes pulse{0%,100%{stroke-opacity:0}50%{stroke-opacity:1}}
+.hint{fill:none;stroke:#fff;stroke-width:4;animation:pulse 1s 4}
+.fact{border-left:4px solid var(--accent);padding:6px 12px;margin:8px 0;background:var(--bg);border-radius:0 8px 8px 0}
+.ev{display:flex;align-items:center;gap:8px;padding:8px 10px;border:2px solid var(--line);border-radius:8px;margin:6px 0;background:var(--card)}
+.ev span{flex:1}.ev.good{border-color:var(--ok)}.ev.bad{border-color:#dc2626}
+.hide{display:none}
+.msg{min-height:1.4em;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Heritage Hunt</h1>
+  <p class="sub">Three puzzles in the old city of Hyderabad. Solve each one to unlock facts for your journal.</p>
+  <div class="tabs" id="tabs"></div>
+  <div class="hud"><span id="prog"></span><span id="status"></span></div>
+
+  <section id="L0" class="card">
+    <h2 style="margin:0">Level 1: Rebuild the Charminar</h2>
+    <p class="sub" style="margin:2px 0">Slide the tiles into place to rebuild the picture. Click a tile next to the gap.</p>
+    <div class="board" id="board"></div>
+    <div style="text-align:center"><button id="shuffle">Shuffle again</button> <span id="moves" class="msg"></span></div>
+    <div id="f0"></div>
+  </section>
+
+  <section id="L1" class="card hide">
+    <h2 style="margin:0">Level 2: Hunt in Golconda Fort</h2>
+    <p class="sub" style="margin:2px 0">Five things are hidden in this scene: a gem, the gate’s iron spikes, a cannon, the highest pavilion, and the spot where a clap echoes. Click to find them.</p>
+    <svg class="scene" id="scene" viewBox="0 0 800 450" aria-label="Golconda Fort scene"></svg>
+    <div style="margin-top:8px"><button id="hintBtn">Hint</button> <span id="found" class="msg"></span></div>
+    <div id="f1"></div>
+  </section>
+
+  <section id="L2" class="card hide">
+    <h2 style="margin:0">Level 3: Put history in order</h2>
+    <p class="sub" style="margin:2px 0">Use the arrows to arrange these events from earliest to latest.</p>
+    <div id="events"></div>
+    <button id="check">Check order</button> <span id="tmsg" class="msg"></span>
+    <div id="f2"></div>
+  </section>
+
+  <div class="card" id="journal"><b>Heritage journal</b><div id="jlist" class="msg">Solve a puzzle to add your first fact.</div></div>
+  <p class="sub" style="font-size:.8rem;margin-top:14px">Facts are drawn from public sources on Charminar and Golconda Fort. Dates and figures differ between sources, so check with the Telangana Tourism and ASI pages before using them in class.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const FACTS = {
+  c1: 'Charminar means “Four Minarets”. Sultan Muhammad Quli Qutb Shah, the fifth Qutb Shahi ruler, built it in 1591.',
+  c2: 'He built it after moving his capital from Golconda to the new city of Hyderabad. Many accounts say it marks the end of a plague.',
+  c3: 'It is built of granite, limestone, mortar and powdered marble. Laad Bazaar, famous for bangles, and the Mecca Masjid are close by.',
+  g1: 'Golconda’s mines, such as Kollur, are linked to famous diamonds like the Hope Diamond. The Koh-i-Noor is traditionally associated with them, but its exact origin is debated.',
+  g2: 'The main gate, Fateh Darwaza (Victory Gate), has giant iron spikes to stop war elephants from battering it down. Its name recalls Aurangzeb’s army marching in.',
+  g3: 'The fort has eight gates and 87 bastions, and its outer wall is roughly 7 km long. It was built to outlast sieges.',
+  g4: 'The Bala Hissar pavilion, at the highest point of the fort, is about a kilometre from the main gate.',
+  g5: 'A clap at a particular spot under the dome of Fateh Darwaza can be heard at Bala Hissar, nearly a kilometre away. It is said to have worked as an early-warning system.',
+  t1: 'Early 1500s: the Qutb Shahi dynasty begins, and Golconda (Telugu for “shepherds’ hill”) is its capital.',
+  t2: '1591: Hyderabad is founded and Charminar is built by Muhammad Quli Qutb Shah.',
+  t3: '1687: Aurangzeb takes Golconda after a siege of about eight months, ending Qutb Shahi rule.',
+  t4: '1889: clocks are added on all four sides of Charminar.'
+};
+const TOTAL = Object.keys(FACTS).length, got = new Set(), done = [false, false, false];
+function unlock(ids, box) {
+  ids.forEach(i => got.add(i));
+  if (box) $(box).innerHTML = ids.map(i => `<div class="fact">${FACTS[i]}</div>`).join('');
+  $('jlist').innerHTML = [...got].map(i => `<div class="fact">${FACTS[i]}</div>`).join('');
+  $('prog').textContent = `Facts found: ${got.size} of ${TOTAL}`;
+  $('status').textContent = done.every(Boolean) ? 'All three puzzles complete. Well done, heritage detective!' : `Puzzles solved: ${done.filter(Boolean).length} of 3`;
+}
+const NAMES = ['1. Charminar', '2. Golconda hunt', '3. Timeline'];
+NAMES.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => go(i); $('tabs').appendChild(b); });
+function go(i) { [0, 1, 2].forEach(k => { $('L' + k).classList.toggle('hide', k !== i); $('tabs').children[k].classList.toggle('on', k === i); }); }
+
+/* LEVEL 1: sliding puzzle with a drawn Charminar */
+const CH = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#f59e0b'/><stop offset='1' stop-color='#fde8b8'/></linearGradient></defs>
+<rect width='300' height='300' fill='url(#s)'/><circle cx='235' cy='55' r='26' fill='#fff7d6'/><circle cx='50' cy='70' r='9' fill='#fff' opacity='.7'/>
+<path d='M30 60l8 4 8-4M60 40l8 4 8-4M200 30l8 4 8-4' stroke='#5b3a1e' fill='none' stroke-width='2'/>
+<rect y='262' width='300' height='38' fill='#9a7b4f'/>
+<rect x='72' y='120' width='156' height='142' fill='#ead7b1'/><rect x='72' y='112' width='156' height='10' fill='#c9ad78'/>
+<path d='M120 262v-62a30 30 0 0 1 60 0v62z' fill='#4a3320'/><path d='M82 262v-36a14 14 0 0 1 28 0v36zM190 262v-36a14 14 0 0 1 28 0v36z' fill='#6b4a2b'/>
+<path d='M118 160a14 14 0 0 1 28 0zM154 160a14 14 0 0 1 28 0z' fill='#6b4a2b'/><rect x='116' y='160' width='30' height='6' fill='#ead7b1'/>
+<circle cx='150' cy='138' r='10' fill='#fff' stroke='#4a3320' stroke-width='2'/><path d='M150 138v-6M150 138l5 3' stroke='#4a3320' stroke-width='2'/>
+<g fill='#ead7b1'><rect x='46' y='50' width='26' height='212'/><rect x='228' y='50' width='26' height='212'/><rect x='88' y='70' width='18' height='45'/><rect x='194' y='70' width='18' height='45'/></g>
+<g fill='#c9ad78'><rect x='42' y='96' width='34' height='7'/><rect x='42' y='150' width='34' height='7'/><rect x='224' y='96' width='34' height='7'/><rect x='224' y='150' width='34' height='7'/><rect x='84' y='88' width='26' height='6'/><rect x='190' y='88' width='26' height='6'/></g>
+<g fill='#ead7b1' stroke='#c9ad78' stroke-width='2'><ellipse cx='59' cy='48' rx='14' ry='11'/><ellipse cx='241' cy='48' rx='14' ry='11'/><ellipse cx='97' cy='68' rx='10' ry='8'/><ellipse cx='203' cy='68' rx='10' ry='8'/></g>
+<g stroke='#7a5a2e' stroke-width='2'><path d='M59 37v-14M241 37v-14M97 60v-10M203 60v-10'/></g>
+<g fill='#dc2626'><circle cx='20' cy='282' r='7'/><circle cx='36' cy='282' r='7' fill='#16a34a'/><circle cx='52' cy='282' r='7' fill='#2563eb'/><circle cx='248' cy='282' r='7' fill='#16a34a'/><circle cx='264' cy='282' r='7' fill='#dc2626'/><circle cx='280' cy='282' r='7' fill='#7c3aed'/></g></svg>`;
+const IMG = `url("data:image/svg+xml,${encodeURIComponent(CH)}")`;
+let tiles = [], moves = 0, solved = false;
+const SOLVED = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+function neighbours(i) { const r = Math.floor(i / 3), c = i % 3, n = []; if (r > 0) n.push(i - 3); if (r < 2) n.push(i + 3); if (c > 0) n.push(i - 1); if (c < 2) n.push(i + 1); return n; }
+function mix() { tiles = SOLVED.slice(); let last = -1, z = 8; for (let k = 0; k < 120; k++) { const opts = neighbours(z).filter(x => x !== last); const m = opts[Math.floor(Math.random() * opts.length)]; [tiles[z], tiles[m]] = [tiles[m], tiles[z]]; last = z; z = m; } if (tiles.join() === SOLVED.join()) mix(); }
+function drawBoard() {
+  $('board').classList.toggle('done', solved); $('board').innerHTML = '';
+  tiles.forEach((t, i) => {
+    const b = document.createElement('button'); const v = (solved && t === 0) ? 9 : t, x = v ? (v - 1) % 3 : 0, y = v ? Math.floor((v - 1) / 3) : 0;
+    b.className = 'tile' + (v === 0 ? ' blank' : ''); b.setAttribute('aria-label', v ? 'Tile ' + v : 'Empty space');
+    if (v) { b.style.backgroundImage = IMG; b.style.backgroundPosition = `${x * 50}% ${y * 50}%`; }
+    b.onclick = () => tap(i); $('board').appendChild(b);
+  });
+  $('moves').textContent = solved ? `Solved in ${moves} moves!` : `Moves: ${moves}`;
+}
+function tap(i) {
+  if (solved) return; const z = tiles.indexOf(0); if (!neighbours(i).includes(z)) return;
+  [tiles[i], tiles[z]] = [tiles[z], tiles[i]]; moves++;
+  if (tiles.join() === SOLVED.join()) { solved = true; done[0] = true; unlock(['c1', 'c2', 'c3'], 'f0'); }
+  drawBoard();
+}
+$('shuffle').onclick = () => { solved = false; moves = 0; $('f0').innerHTML = ''; mix(); drawBoard(); };
+
+/* LEVEL 2: hidden-object hunt */
+const SPOTS = [['g1', 625, 398, 'a hidden gem'], ['g2', 155, 360, 'the iron spikes'], ['g3', 486, 246, 'the cannon'], ['g4', 400, 108, 'the Bala Hissar pavilion'], ['g5', 155, 300, 'the clapping spot']];
+const crenels = Array.from({ length: 21 }, (_, i) => `<rect x='${240 + i * 15}' y='238' width='9' height='12'/>`).join('');
+const bastions = [240, 320, 400, 480, 560].map(x => `<circle cx='${x}' cy='305' r='22'/>`).join('');
+const spikes = [0, 1, 2].flatMap(r => [0, 1, 2].map(c => `<path d='M${134 + c * 18} ${345 + r * 16}l5 -10l5 10z'/>`)).join('');
+$('scene').innerHTML = `<defs><linearGradient id='gs' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fcd34d'/><stop offset='1' stop-color='#fff1c9'/></linearGradient></defs>
+<rect width='800' height='450' fill='url(#gs)'/><circle cx='660' cy='80' r='38' fill='#fff7d6'/>
+<path d='M0 330Q150 240 300 300T600 270T800 320V450H0z' fill='#c8a470'/>
+<path d='M120 450L400 160L700 450z' fill='#9a7a4f'/>
+<g fill='#8d6e46'><rect x='240' y='250' width='320' height='80'/>${crenels}</g><g fill='#7c5f3c'>${bastions}</g>
+<rect x='330' y='150' width='140' height='100' fill='#a88358'/><rect x='375' y='120' width='50' height='32' fill='#b8946a'/>
+<g fill='#4a3320'><rect x='382' y='128' width='8' height='20'/><rect x='396' y='128' width='8' height='20'/><rect x='410' y='128' width='8' height='20'/></g><circle cx='400' cy='116' r='13' fill='#c9a574'/><path d='M400 103v-12' stroke='#5b3a1e' stroke-width='3'/>
+<g transform='translate(466 240) rotate(-12)'><rect width='48' height='12' rx='5' fill='#2a2a2a'/></g><circle cx='488' cy='256' r='9' fill='#3d2f22'/>
+<rect x='108' y='282' width='94' height='110' fill='#8c6a43'/><path d='M126 392v-50a29 29 0 0 1 58 0v50z' fill='#4a3320'/><path d='M126 282a29 29 0 0 1 58 0z' fill='#a88358'/>
+<g fill='#2a1d12'>${spikes}</g>
+<g fill='none' stroke='#7c5f3c' stroke-width='2'><path d='M140 300a15 15 0 0 1 30 0'/><path d='M130 306a25 25 0 0 1 50 0'/></g>
+<ellipse cx='600' cy='415' rx='60' ry='24' fill='#7a6040'/><ellipse cx='655' cy='420' rx='40' ry='18' fill='#6a5236'/><ellipse cx='700' cy='405' rx='34' ry='14' fill='#7f6544'/>
+<path d='M625 386l11 10l-11 16l-11-16z' fill='#8ee3f5' stroke='#5fc4d8'/>
+<rect y='430' width='800' height='20' fill='#8a6a43'/>` + SPOTS.map(([id, x, y]) => `<circle class='hot' id='h_${id}' cx='${x}' cy='${y}' r='28'/>`).join('');
+const foundSpots = new Set(); let ac;
+function clap() { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); [[0, .5], [.7, .15]].forEach(([d, v]) => { const n = ac.sampleRate * .25, b = ac.createBuffer(1, n, ac.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4); const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = b; g.gain.value = v; s.connect(g); g.connect(ac.destination); s.start(ac.currentTime + d); }); }
+function drawFound() {
+  $('found').textContent = `Found ${foundSpots.size} of ${SPOTS.length}` + (foundSpots.size === SPOTS.length ? '. Level complete!' : '');
+  $('f1').innerHTML = [...foundSpots].map(i => `<div class="fact">${FACTS[i]}</div>`).join('');
+}
+SPOTS.forEach(([id, x, y, label]) => $('h_' + id).addEventListener('click', () => {
+  if (foundSpots.has(id)) return; foundSpots.add(id);
+  $('scene').insertAdjacentHTML('beforeend', `<circle class='found' cx='${x}' cy='${y}' r='28'/>`);
+  if (id === 'g5') { try { clap(); } catch (e) { /* sound is optional */ } }
+  unlock([id]); drawFound();
+  if (foundSpots.size === SPOTS.length) { done[1] = true; unlock([]); }
+}));
+$('hintBtn').onclick = () => {
+  const left = SPOTS.filter(s => !foundSpots.has(s[0])); if (!left.length) return; const [, x, y] = left[Math.floor(Math.random() * left.length)];
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('class', 'hint'); c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 34);
+  $('scene').appendChild(c); setTimeout(() => c.remove(), 4200);
+};
+
+/* LEVEL 3: timeline */
+const EV = [['t1', 'Qutb Shahi dynasty begins; Golconda is its capital'], ['t2', 'Hyderabad is founded and Charminar is built'], ['t3', 'Aurangzeb captures Golconda after a long siege'], ['t4', 'Clocks are added to the four sides of Charminar']];
+let order = EV.map(e => e[0]); do { order.sort(() => Math.random() - 0.5); } while (order.join() === EV.map(e => e[0]).join());
+function drawEvents(res) {
+  $('events').innerHTML = '';
+  order.forEach((id, i) => {
+    const d = document.createElement('div'); d.className = 'ev' + (res ? (res[i] ? ' good' : ' bad') : '');
+    d.innerHTML = `<span>${EV.find(e => e[0] === id)[1]}</span>`;
+    [['▲', -1], ['▼', 1]].forEach(([s, k]) => { const b = document.createElement('button'); b.textContent = s; b.setAttribute('aria-label', k < 0 ? 'Move up' : 'Move down'); b.disabled = done[2] || i + k < 0 || i + k >= order.length;
+      b.onclick = () => { [order[i], order[i + k]] = [order[i + k], order[i]]; $('tmsg').textContent = ''; drawEvents(); }; d.appendChild(b); });
+    $('events').appendChild(d);
+  });
+}
+$('check').onclick = () => {
+  const res = order.map((id, i) => id === EV[i][0]); drawEvents(res);
+  if (res.every(Boolean)) { done[2] = true; $('tmsg').textContent = 'Correct! The timeline is complete.'; unlock(EV.map(e => e[0]), 'f2'); drawEvents(res); }
+  else $('tmsg').textContent = `${res.filter(Boolean).length} of 4 in the right place. Keep trying!`;
+};
+
+mix(); drawBoard(); drawEvents(); drawFound(); unlock([]); go(0);
+</script>
+</body>
+</html>
