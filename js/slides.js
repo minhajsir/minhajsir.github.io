@@ -2,7 +2,7 @@
    and list your slides by hand in SLIDES (js/data.js). */
 const SLIDES_AUTO = [];
 
-/* Add computational projects without the Personal/Videos sections. */
+/* Computational-media projects displayed in the Projects panel. */
 document.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
@@ -53,50 +53,68 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!filters || !student) return;
 
   var escapeHtml = function (value) {
-    return String(value).replace(/[&<>\"']/g, function (char) {
+    return String(value).replace(/[&<>"']/g, function (char) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
     });
   };
 
-  var existingComp = filters.querySelector('[data-group="computational"]');
-  if (!existingComp) {
-    var filterButton = document.createElement("button");
-    filterButton.type = "button";
-    filterButton.setAttribute("data-group", "computational");
-    filterButton.setAttribute("aria-pressed", "false");
-    filterButton.textContent = "Computational projects";
-    filters.appendChild(filterButton);
-  }
-
   var computational = panel.querySelector('[data-g="computational"]');
   if (!computational) {
     computational = document.createElement("section");
-    computational.className = "wrap block";
+    computational.className = "wrap block cm-projects-section";
     computational.setAttribute("data-g", "computational");
-    computational.innerHTML = '<h3 style="margin-bottom:1.2rem">Computational media projects</h3>' +
-      '<div class="cards">' + projects.map(function (project) {
+    computational.innerHTML = '<h3>Computational media projects</h3>' +
+      '<div class="cards cm-projects-grid">' + projects.map(function (project) {
         var title = escapeHtml(project.title);
+        var url = escapeHtml(project.url);
         return '<article class="leafcard cm-project-card">' +
-          '<a class="cm-project-image" href="' + escapeHtml(project.url) + '" aria-label="Open project: ' + title + '">' +
+          '<a class="cm-project-image" href="' + url + '" aria-label="Open project: ' + title + '">' +
             '<img src="' + escapeHtml(project.image) + '" alt="" loading="lazy">' +
           '</a>' +
-          '<h4><a href="' + escapeHtml(project.url) + '">' + title + '</a></h4>' +
+          '<div class="cm-project-copy"><h4><a href="' + url + '">' + title + '</a></h4>' +
           '<p>' + escapeHtml(project.description) + '</p>' +
-          '<a class="cm-project-open" href="' + escapeHtml(project.url) + '">Explore project <span aria-hidden="true">→</span></a>' +
+          '<a class="cm-project-open" href="' + url + '">Explore project <span aria-hidden="true">→</span></a></div>' +
         '</article>';
       }).join("") + '</div>';
     student.parentNode.insertBefore(computational, student.nextSibling);
   }
 
+  /* Keep the project filter focused on the two available views. */
+  filters.innerHTML =
+    '<button type="button" data-group="student" aria-pressed="true">Student work</button>' +
+    '<button type="button" data-group="computational" aria-pressed="false">Computational projects</button>';
+
+  /* Start with student work visible; selecting a filter shows that view only. */
+  computational.hidden = true;
   filters.querySelectorAll("button").forEach(function (button) {
     button.addEventListener("click", function () {
-      var g = button.getAttribute("data-group");
-      filters.querySelectorAll("button").forEach(function (x) {
-        x.setAttribute("aria-pressed", String(x === button));
+      var selected = button.getAttribute("data-group");
+      filters.querySelectorAll("button").forEach(function (item) {
+        item.setAttribute("aria-pressed", String(item === button));
       });
-      panel.querySelectorAll("[data-g]").forEach(function (sec) {
-        sec.hidden = !(g === "all" || sec.getAttribute("data-g") === g);
-      });
+      student.hidden = selected !== "student";
+      computational.hidden = selected !== "computational";
     });
   });
+
+  /* Match the portfolio's paper, foliage, rounded-card visual language. */
+  var style = document.createElement("style");
+  style.textContent =
+    '.cm-projects-section > h3{font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:1.2rem}' +
+    '.cm-projects-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-items:stretch}' +
+    '.cm-project-card{display:flex;flex-direction:column;gap:.8rem;padding:1rem;background:#fff;border-radius:26px 6px 26px 6px;transition:transform .25s,border-color .25s}' +
+    '.cm-project-card:hover{transform:translateY(-4px);border-color:var(--leaf-4)}' +
+    '.cm-project-image{display:block;aspect-ratio:16/9;overflow:hidden;border-radius:20px 5px 20px 5px;background:var(--leaf-1)}' +
+    '.cm-project-image img{width:100%;height:100%;object-fit:cover;transition:transform .4s}' +
+    '.cm-project-card:hover .cm-project-image img{transform:scale(1.035)}' +
+    '.cm-project-copy{display:flex;flex:1;flex-direction:column;align-items:flex-start}' +
+    '.cm-project-copy h4{font-size:1.25rem;margin:.1rem 0 .45rem}' +
+    '.cm-project-copy h4 a{color:var(--forest);text-decoration:none}' +
+    '.cm-project-copy h4 a:hover{text-decoration:underline;text-decoration-color:var(--leaf-3)}' +
+    '.cm-project-copy p{color:var(--muted);font-size:.98rem;line-height:1.5;margin:0 0 1rem}' +
+    '.cm-project-open{margin-top:auto;display:inline-flex;align-items:center;gap:.4rem;font-weight:600;text-decoration:none}' +
+    '.cm-project-open span{transition:transform .2s}' +
+    '.cm-project-open:hover span{transform:translateX(3px)}' +
+    '@media(prefers-reduced-motion:reduce){.cm-project-card,.cm-project-image img,.cm-project-open span{transition:none}}';
+  document.head.appendChild(style);
 });
