@@ -2,7 +2,7 @@
 
 A small gallery of algorithmic artworks built with [p5.js](https://p5js.org/). Pick a piece, change the seed, and save the result as a PNG. Built as the first project of the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/generative-art-gallery/`
+
 
 ## Artworks
 
