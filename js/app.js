@@ -23,45 +23,6 @@
     } catch (e) { /* Leave unrelated metadata untouched if it cannot be parsed. */ }
   }
 
-  var projects = [
-    {
-      title: "Rangoli and Kolam Generator",
-      image: "cm_projects/project-one/thumbnail.png",
-      url: "cm_projects/project-one/index.html",
-      description: "Generate symmetric rangoli and kolam-inspired patterns from a seed number, then download them as print-ready SVG files. Built for the B.Tech Computational Media course."
-    },
-    {
-      title: "Hyderabad Sky: data-driven art",
-      image: "cm_projects/project-two/thumbnail.png",
-      url: "cm_projects/project-two/index.html",
-      description: "Three live artworks painted by today's weather and air quality. The data is fetched from the free Open-Meteo APIs (no API key), and every colour and movement is mapped from a real number."
-    },
-    {
-      title: "Game of Life Sonifier",
-      image: "cm_projects/project-three/thumbnail.png",
-      url: "cm_projects/project-three/index.html",
-      description: "Conway's Game of Life that you can hear. A playhead sweeps across the grid like a music sequencer, and every live cell it touches plays a note."
-    },
-    {
-      title: "Heritage Hunt: Charminar and Golconda",
-      image: "cm_projects/project-four/thumbnail.png",
-      url: "cm_projects/project-four/index.html",
-      description: "A short puzzle game about two landmarks of Hyderabad. Each puzzle you solve unlocks facts that are saved in your heritage journal. Built for the B.Tech Computational Media course."
-    },
-    {
-      title: "Air Calligraphy",
-      image: "cm_projects/project-five/thumbnail.png",
-      url: "cm_projects/project-five/index.html",
-      description: "Write in the air with your index finger. A webcam tracks your hand in the browser; slow movements make thick brush strokes and quick flicks make thin ones. Turn on symmetry to draw rangoli-style patterns."
-    },
-    {
-      title: "Generative Art Gallery",
-      image: "cm_projects/project-six/thumbnail.png",
-      url: "cm_projects/project-six/index.html",
-      description: "A small gallery of algorithmic artworks built with p5.js. Pick a piece, change the seed, and save the result as a PNG. Built as the first project of the B.Tech Computational Media course."
-    }
-  ];
-
   var script = document.createElement("script");
   script.src = "https://cdn.jsdelivr.net/gh/minhajsir/minhajsir.github.io@2dd88cf15f26f8c9de6e439df1512f1fc2e25fc3/js/app.js";
   script.async = false;
@@ -88,20 +49,79 @@
     if (technicalSection) technicalSection.textContent = "Technical projects";
     var videosSection = document.querySelector('#p-projects [data-g="videos"]');
     if (videosSection) videosSection.remove();
+    if (!technicalSection) return;
 
     var style = document.createElement("style");
     style.textContent = ".tech-project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:1.2rem}.tech-project-card{overflow:hidden;padding:0!important}.tech-project-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--leaf-1,#edf3e6)}.tech-project-card .tech-project-copy{padding:1rem 1.1rem 1.2rem}.tech-project-card h4{margin:0 0 .55rem}.tech-project-card p{margin:0 0 1rem}.tech-project-card .tech-project-link{display:inline-flex;align-items:center;gap:.35rem;font-weight:700;color:var(--leaf-5,#1f4a2c);text-decoration:none}.tech-project-card .tech-project-link:hover{text-decoration:underline}";
     document.head.appendChild(style);
 
-    if (technicalSection) {
-      var cards = document.createElement("div");
-      cards.className = "tech-project-grid";
-      cards.innerHTML = projects.map(function (project) {
-        return '<article class="leafcard tech-project-card"><a href="' + project.url + '" target="_blank" rel="noopener" aria-label="Open ' + project.title + '"><img src="' + project.image + '" alt="' + project.title + ' thumbnail" loading="lazy"></a><div class="tech-project-copy"><h4>' + project.title + '</h4><p>' + project.description + '</p><a class="tech-project-link" href="' + project.url + '" target="_blank" rel="noopener">Open project <span aria-hidden="true">↗</span></a></div></article>';
-      }).join("");
-      var oldCards = technicalSection.nextElementSibling;
-      if (oldCards) oldCards.replaceWith(cards);
-    }
+    var oldCards = technicalSection.nextElementSibling;
+    var cards = document.createElement("div");
+    cards.className = "tech-project-grid";
+    cards.setAttribute("aria-live", "polite");
+    cards.innerHTML = '<p>Loading projects…</p>';
+    if (oldCards) oldCards.replaceWith(cards);
+
+    // Discover project folders at runtime so new cm_projects folders appear automatically.
+    var api = "https://api.github.com/repos/minhajsir/minhajsir.github.io/contents/";
+    var encPath = function (path) { return path.split("/").map(encodeURIComponent).join("/"); };
+    var escapeHtml = function (value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+      });
+    };
+    var cleanMarkdown = function (text) {
+      return text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*_`>#]/g, "").trim();
+    };
+
+    fetch(api + "cm_projects?ref=main")
+      .then(function (response) {
+        if (!response.ok) throw new Error("Could not list project folders");
+        return response.json();
+      })
+      .then(function (entries) {
+        var folders = entries.filter(function (entry) { return entry.type === "dir"; });
+        return Promise.all(folders.map(function (folder) {
+          return fetch(api + encPath(folder.path) + "?ref=main")
+            .then(function (response) { if (!response.ok) throw new Error("Could not read " + folder.path); return response.json(); })
+            .then(function (files) {
+              var readme = files.filter(function (file) { return file.name.toLowerCase() === "readme.md"; })[0];
+              var thumbnail = files.filter(function (file) { return /^thumbnail\.(png|jpe?g|webp|gif)$/i.test(file.name); })[0];
+              var index = files.filter(function (file) { return file.name.toLowerCase() === "index.html"; })[0];
+              if (!thumbnail || !index) return null;
+              var title = folder.name.replace(/[-_]+/g, " ").replace(/\b\w/g, function (letter) { return letter.toUpperCase(); });
+              var project = {
+                title: title,
+                image: "/" + encPath(thumbnail.path),
+                url: "/" + encPath(index.path),
+                description: ""
+              };
+              return readme
+                ? fetch(readme.download_url).then(function (response) { if (!response.ok) throw new Error("Could not read project description"); return response.text(); })
+                    .then(function (markdown) {
+                      var lines = markdown.split(/\r?\n/).map(function (line) { return line.trim(); }).filter(Boolean);
+                      if (lines[0] && /^#\s+/.test(lines[0])) title = cleanMarkdown(lines.shift().replace(/^#\s+/, ""));
+                      project.title = title;
+                      project.description = lines.slice(0, 2).map(cleanMarkdown).filter(Boolean).join(" ");
+                      return project;
+                    })
+                : project;
+            });
+        }));
+      })
+      .then(function (projects) {
+        projects = projects.filter(Boolean);
+        if (!projects.length) {
+          cards.innerHTML = '<p>No projects with an index.html and thumbnail were found in cm_projects.</p>';
+          return;
+        }
+        cards.innerHTML = projects.map(function (project) {
+          return '<article class="leafcard tech-project-card"><a href="' + escapeHtml(project.url) + '" target="_blank" rel="noopener" aria-label="Open ' + escapeHtml(project.title) + '"><img src="' + escapeHtml(project.image) + '" alt="' + escapeHtml(project.title) + ' thumbnail" loading="lazy"></a><div class="tech-project-copy"><h4>' + escapeHtml(project.title) + '</h4><p>' + escapeHtml(project.description) + '</p><a class="tech-project-link" href="' + escapeHtml(project.url) + '" target="_blank" rel="noopener">Open project <span aria-hidden="true">↗</span></a></div></article>';
+        }).join("");
+      })
+      .catch(function () {
+        cards.innerHTML = '<p>Projects could not be loaded right now. Please try again later.</p>';
+      });
   };
   document.head.appendChild(script);
 })();
