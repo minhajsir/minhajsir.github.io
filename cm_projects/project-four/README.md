@@ -2,8 +2,6 @@
 
 A short puzzle game about two landmarks of Hyderabad. Each puzzle you solve unlocks facts that are saved in your "heritage journal". Built for the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/heritage-hunt/`
-
 ## The three levels
 
 | Level | Puzzle | What you learn |
