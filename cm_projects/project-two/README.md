@@ -2,7 +2,7 @@
 
 Three live artworks painted by today's weather and air quality. The data is fetched from the free Open-Meteo APIs (no API key), and every colour and movement is mapped from a real number. Built for the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/hyderabad-sky/`
+
 
 ## The three pieces
 
