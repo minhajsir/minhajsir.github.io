@@ -2,7 +2,6 @@
 
 Generate symmetric rangoli and kolam-inspired patterns from a seed number, then download them as print-ready SVG files. Built for the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/rangoli-kolam-generator/`
 
 ## Features
 
