@@ -2,8 +2,6 @@
 
 Write in the air with your index finger. A webcam tracks your hand in the browser; slow movements make thick brush strokes and quick flicks make thin ones. Turn on symmetry to draw rangoli-style patterns with 2 to 12 copies of every stroke. Built for the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/air-calligraphy/`
-
 ## How it works
 
 | Idea | How it is done |
