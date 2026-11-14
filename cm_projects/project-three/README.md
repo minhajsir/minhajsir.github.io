@@ -2,8 +2,6 @@
 
 Conway's Game of Life that you can hear. A playhead sweeps across the grid like a music sequencer, and every live cell it touches plays a note. Because the cells keep being born and dying, the music keeps evolving by itself. Built for the B.Tech Computational Media course.
 
-**Live demo:** `https://<your-username>.github.io/life-sonifier/`
-
 ## How it maps cells to sound
 
 | Grid | Sound |
