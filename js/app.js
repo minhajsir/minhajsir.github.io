@@ -27,6 +27,28 @@
   script.src = "https://cdn.jsdelivr.net/gh/minhajsir/minhajsir.github.io@2dd88cf15f26f8c9de6e439df1512f1fc2e25fc3/js/app.js";
   script.async = false;
   script.onload = function () {
+    var removeNoteBlocks = function (label) {
+      var headings = document.querySelectorAll("h3");
+      for (var i = 0; i < headings.length; i++) {
+        var text = (headings[i].textContent || "").replace(/\s+/g, " ").trim();
+        if (text.indexOf(label) === 0) {
+          var block = headings[i].closest(".split");
+          if (block) {
+            block.remove();
+            return;
+          }
+          var panel = headings[i].closest(".block");
+          if (panel) {
+            panel.remove();
+            return;
+          }
+        }
+      }
+    };
+
+    removeNoteBlocks("Teaching notes");
+    removeNoteBlocks("Research notes");
+
     var filters = document.getElementById("pfilters");
     if (!filters) return;
 
@@ -52,7 +74,7 @@
     if (!technicalSection) return;
 
     var style = document.createElement("style");
-    style.textContent = ".tech-project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:1.2rem}.tech-project-card{overflow:hidden;padding:0!important}.tech-project-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--leaf-1,#edf3e6)}.tech-project-card .tech-project-copy{padding:1rem 1.1rem 1.2rem}.tech-project-card h4{margin:0 0 .55rem}.tech-project-card p{margin:0 0 1rem}.tech-project-card .tech-project-link{display:inline-flex;align-items:center;gap:.35rem;font-weight:700;color:var(--leaf-5,#1f4a2c);text-decoration:none}.tech-project-card .tech-project-link:hover{text-decoration:underline}";
+    style.textContent = ".tech-project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:1.2rem}.tech-project-card{overflow:hidden;padding:0!important}.tech-project-card img{display:block;width:100%;height:180px;object-fit:cover}.tech-project-card a{display:block;text-decoration:none;color:inherit}.tech-project-card h4{margin:0;padding:0.8rem 1rem 0.25rem}.tech-project-card p{margin:0;padding:0 1rem 1rem;color:var(--muted)}";
     document.head.appendChild(style);
 
     var oldCards = technicalSection.nextElementSibling;
@@ -66,7 +88,7 @@
     var api = "https://api.github.com/repos/minhajsir/minhajsir.github.io/contents/";
     var encPath = function (path) { return path.split("/").map(encodeURIComponent).join("/"); };
     var escapeHtml = function (value) {
-      return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+      return String(value == null ? "" : value).replace(/[&<>\"']/g, function (char) {
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
       });
     };
@@ -116,7 +138,7 @@
           return;
         }
         cards.innerHTML = projects.map(function (project) {
-          return '<article class="leafcard tech-project-card"><a href="' + escapeHtml(project.url) + '" target="_blank" rel="noopener" aria-label="Open ' + escapeHtml(project.title) + '"><img src="' + escapeHtml(project.image) + '" alt="' + escapeHtml(project.title) + ' thumbnail" loading="lazy"></a><div class="tech-project-copy"><h4>' + escapeHtml(project.title) + '</h4><p>' + escapeHtml(project.description) + '</p><a class="tech-project-link" href="' + escapeHtml(project.url) + '" target="_blank" rel="noopener">Open project <span aria-hidden="true">↗</span></a></div></article>';
+          return '<article class="leafcard tech-project-card"><a href="' + escapeHtml(project.url) + '" target="_blank" rel="noopener" aria-label="Open ' + escapeHtml(project.title) + '"><img src="' + escapeHtml(project.image) + '" alt="' + escapeHtml(project.title) + '" loading="lazy"><h4>' + escapeHtml(project.title) + '</h4><p>' + escapeHtml(project.description || "Student project") + '</p></a></article>';
         }).join("");
       })
       .catch(function () {
