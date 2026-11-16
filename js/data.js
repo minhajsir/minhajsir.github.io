@@ -14,9 +14,9 @@ const SITE = {
   lede: "I teach, research and direct films where animation meets generative AI and immersive media, after twenty years in studios and classrooms.",
 
   about: [
-    "I am an Assistant Professor at the School of Digital Media and Communication, Mahindra University. I teach Animation & VFX, Computer Graphics, Generative AI, Computational Media and AR/VR, and I run the AR/VR & Unreal Engine Laboratory.",
-    "Before academia I worked in production. As head of a digital film unit I wrote and directed 250 short films and six web series, and I supervised animation teams for clients in India and the USA. My AI-driven and immersive films have won recognition at national and international festivals.",
-    "I also write: peer-reviewed papers, Scopus-indexed book chapters on AI, AR/VR and digital-twin education, and textbooks for NCERT and commercial publishers."
+    "I am an Assistant Professor at the School of Digital Media and Communication (SDMC), Mahindra University, specialising in Animation and VFX, Digital Media Production, Computer Graphics, Game Design, Generative AI, and Immersive Media. With over 20 years of experience spanning media production, animation, visual storytelling, and higher education.",
+    "Before academia I worked in production. I wrote and directed nearly 300 short films and two web series, while leading and supervising animation and digital production teams for clients across India and the United States. My work in filmmaking, animation, and digital innovation has received several national and international awards and recognitions.",
+    "I am actively engaged in academic research. My research interests include Generative AI in education, Artificial Intelligence in Media, Augmented and Virtual Reality (AR/VR), and technology-driven creative education. I have authored peer-reviewed research papers and contributed chapters to Scopus-indexed academic books. I also develop industry-oriented e-learning educational content for online learning platforms."
   ],
 
   competencies: [
@@ -329,11 +329,6 @@ const SLIDES = [
   ] }
 ];
 
-/* Teaching notes: put PDFs in the notes/ folder and list them here.        */
-const TEACHING_NOTES = [
-  // { title: "Introduction to Unreal Engine 5", course: "AR/VR", note: "Week 1 lecture notes", link: "notes/unreal-intro.pdf" },
-];
-
 /* ---------- STUDENT PROJECTS ----------
    Add student work under each group's `projects` list.                     */
 const STUDENT_GROUPS = [
@@ -425,11 +420,6 @@ const CONFERENCES = [
   { title: "The Impact of 3D Visuals as Part of ICT in Improving Student Learning Outcomes in Indian Education",
     venue: "National Seminar on Quality Enhancement Through Outcome-Based Education", year: "" },
   { title: "Research presented at the National Conference on Learning Techniques in Artificial Intelligence", year: "" }
-];
-
-/* Research notes: short write-ups, PDFs or links.                          */
-const RESEARCH_NOTES = [
-  // { title: "Notes on generative AI in the animation classroom", note: "Short summary", link: "notes/ai-animation.pdf" },
 ];
 
 /* ---------- EXPERIENCE (CV) ---------- */
