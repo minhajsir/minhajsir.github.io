@@ -1,10 +1,10 @@
 /* =====================================================================
-   YOUR PORTFOLIO CONTENT
-   Everything on the website comes from this file. To add a film, a video,
-   a student project or an artwork, copy one of the entries, paste it below
-   the last one (keep the comma between entries) and change the text.
-   Empty text ("") is fine: the site simply leaves that part out.
-   ===================================================================== */
+    YOUR PORTFOLIO CONTENT
+    Everything on the website comes from this file. To add a film, a video,
+    a student project or an artwork, copy one of the entries, paste it below
+    the last one (keep the comma between entries) and change the text.
+    Empty text ("") is fine: the site simply leaves that part out.
+    ===================================================================== */
 
 const SITE = {
   name: "Dr. Minhaj Abdullah",
@@ -55,8 +55,8 @@ const SOCIALS = [
 ];
 
 /* ---------- FILMS (title cards on the Films & Awards tab) ----------
-   link   = where to watch (YouTube / Vimeo / festival page)
-   poster = optional image, e.g. "images/films/uncertainty.jpg"            */
+    link   = where to watch (YouTube / Vimeo / festival page)
+    poster = optional image, e.g. "images/films/uncertainty.jpg"            */
 const FILMS = [
   { title: "Uncertainty", year: "2025", kind: "AI short film",
     note: "Best Short Film, Satyajit Ritwik Mrinal International Kolkata Film Festival.",
@@ -76,11 +76,11 @@ const FILMS = [
 ];
 
 /* ---------- AWARDS & HONOURS ----------
-   type: "award" (wins, runner-up, mentions)
-         "selection" (official selections, screenings)
-         "academic" (teaching awards, jury work, student wins)
-   year: leave "" for items without a year (they appear under "Earlier")
-   featured: true shows the item on the Home tab                           */
+    type: "award" (wins, runner-up, mentions)
+          "selection" (official selections, screenings)
+          "academic" (teaching awards, jury work, student wins)
+    year: leave "" for items without a year (they appear under "Earlier")
+    featured: true shows the item on the Home tab                           */
 const AWARDS = [
   { year: "2026", type: "selection", featured: true,
     title: "Official screening",
@@ -161,13 +161,13 @@ const AWARDS = [
 ];
 
 /* ---------- VISUAL ART ----------
-   Put images in images/art/ and list them here (keep each under 500 KB).  */
+    Put images in images/art/ and list them here (keep each under 500 KB).  */
 const GALLERY_FOLDER = "https://drive.google.com/drive/folders/1H1tYogDrgnjUSsnceLWEhJyCnLJxKZ8g";
 
 /* ---------- VISUAL ART / GALLERY ----------
-   drive: paste the Google Drive share link of the image (or just its file ID). The page builds the picture from it.
-   src:   or use a file in this site instead, e.g. "images/art/work-01.jpg" (fastest and most reliable).
-   cat:   one of the GALLERY_CATS below; it drives the filter buttons. Keep each Drive image set to "Anyone with the link: Viewer". */
+    drive: paste the Google Drive share link of the image (or just its file ID). The page builds the picture from it.
+    src:   or use a file in this site instead, e.g. "images/art/work-01.jpg" (fastest and most reliable).
+    cat:   one of the GALLERY_CATS below; it drives the filter buttons. Keep each Drive image set to "Anyone with the link: Viewer". */
 const GALLERY_CATS = ["Painting", "Sketches", "Digital & AI", "Events & awards"];
 const ART = [
   { title: "Digital painting 1", drive: "1W5qtaAX6gSZxhVhTt7VzfN8VNrYTzmzF", cat: "Painting", year: "", medium: "", caption: "" },
@@ -219,7 +219,7 @@ const ART_MEDIUMS = [
 ];
 
 /* ---------- VIDEOS ----------
-   youtube: paste a full YouTube or Vimeo link, or just the YouTube video ID. */
+    youtube: paste a full YouTube or Vimeo link, or just the YouTube video ID. */
 const VIDEOS = [
   // { title: "Showreel", youtube: "https://www.youtube.com/watch?v=XXXXXXXXXXX", note: "Short description" },
 ];
@@ -257,9 +257,9 @@ const MOOCS = [
 ];
 
 /* ---------- CLASSROOM SLIDES ----------
-   Easiest: drop files into slides/<Course name>/ and run  python3 tools/make_slides.py
-   Or list them by hand. `link` can be a file in this site (slides/...) or any web link
-   such as a Google Slides share link.                                                   */
+    Easiest: drop files into slides/<Course name>/ and run  python3 tools/make_slides.py
+    Or list them by hand. `link` can be a file in this site (slides/...) or any web link
+    such as a Google Slides share link.                                                   */
 const SLIDES_FOLDER = "https://drive.google.com/drive/folders/11RMWRWiHlIT3553uUD7PJtGIy2pXrR4h";
 const SLIDES = [
   { course: "Computational Media", decks: [
@@ -330,18 +330,18 @@ const SLIDES = [
 ];
 
 /* ---------- STUDENT PROJECTS ----------
-   Add student work under each group's `projects` list.                     */
+    Add student work under each group's `projects` list.                     */
 const STUDENT_GROUPS = [
   { title: "BTCM VFX short films",
     who: "B.Tech Computational Media",
-    text: "Students take a film through the complete VFX pipeline: concept, screenplay, storyboarding, cinematography, compositing, sound design, colour grading and AI-assisted media generation. I guide their festival submissions, national and international.",
+    text: "Students take a film through the complete VFX pipeline: concept, screenplay, storyboarding, cinematography, compositing, sound design, colour grading and AI-assisted media generation. This work connects creative imagination and technical execution in one studio process.",
     projects: [
       { title: "B.Tech Show Reel", by: "BTCM students", link: "https://youtu.be/b3hxUrCalSY", note: "" },
       { title: "Designing games, apps, and short films", by: "BTCM students", link: "https://youtu.be/L8wPAZGReQ4", note: "" }
     ] },
   { title: "AR, VR and immersive media",
     who: "B.Tech Computational Media",
-    text: "Students design and build AR, VR and immersive projects with interactive technology, UX design and digital assets, then produce demonstration videos for internship and placement portfolios. Work is tested and shown in the AR/VR & Unreal Engine Laboratory on Meta Quest headsets.",
+    text: "Students design and build AR, VR and immersive projects with interactive technology, UX design and digital assets, then produce demonstration videos for internship and placement portfolios.",
     projects: [
       { title: "Augmented Reality EXHIBIT", by: "BTCM students", link: "https://youtu.be/bVdjvLoFJgE", note: "" }
     ] },
@@ -350,10 +350,10 @@ const STUDENT_GROUPS = [
     text: "Supervised and mentored students in initiating and executing a student-led digital publishing project, focusing on the creation of digital magazines and comics for the school.",
     projects: [
        { title: "Digital magazine Project", by: "BJMC students at UPES", link: "https://theviewpointsomm.blogspot.com/", note: "" }
-           ] },
+            ] },
   { title: "Digital comic on Computational Media careers",
     who: "Master's students",
-    text: "Postgraduate students conceived and produced a digital comic about student perspectives on Computational Media education and career pathways, combining narrative development, character design and digital illustration.",
+    text: "Postgraduate students conceived and produced a digital comic about student perspectives on Computational Media education and career pathways, combining narrative development, character design and digital publishing.",
     projects: [
       { title: "I made a comic for a programme I am not even enrolled in", by: "Master's students", link: "https://youtu.be/Iv3xh6wHvKk", note: "" }
     ] }
@@ -365,7 +365,7 @@ const STUDENT_HIGHLIGHT = "Earlier, a student team under my supervision won an A
 const PERSONAL = [
   { title: "Digital film unit and web series",
     when: "2012 – 2016",
-    text: "As Head of the Digital Film Unit at The Boxx Studios, I wrote and directed 250 short films (over 5 lakh views) and six web series aired on Sony LIV, Hungama, Shemaroo, MX Player and Pocket Films.",
+    text: "As Head of the Digital Film Unit at The Boxx Studios, I wrote and directed 250 short films (over 5 lakh views) and six web series aired on Sony LIV, Hungama, Shemaroo, MX Player and Poornima.",
     link: "" },
   { title: "CHAISTORIES",
     when: "2015",
@@ -422,6 +422,9 @@ const CONFERENCES = [
   { title: "Research presented at the National Conference on Learning Techniques in Artificial Intelligence", year: "" }
 ];
 
+const TEACHING_NOTES = [];
+const RESEARCH_NOTES = [];
+
 /* ---------- EXPERIENCE (CV) ---------- */
 const ACADEMIC_ROLES = [
   { role: "Assistant Professor", org: "Mahindra University, Hyderabad", when: "Apr 2025 – present", from: 2025.25, to: null,
@@ -477,9 +480,9 @@ const EDUCATION = [
 ];
 
 const TOOLS = [
-  { cat: "2D/3D animation", list: "3ds Max, Maya, ZBrush, Mudbox, Blender, Unity 3D, Cinema 4D, Adobe Animate, Character Animator, OpenToonz, V-Ray, Substance Painter, Unreal Engine 5, Character Creator, MetaHumans" },
+  { cat: "2D/3D animation", list: "3ds Max, Maya, ZBrush, Mudbox, Blender, Unity 3D, Cinema 4D, Adobe Animate, Character Animator, OpenToonz, V-Ray, Substance Painter, Unreal Engine 5, Character Designer, Storyboard Pro, Toon Boom Harmony" },
   { cat: "Visual effects", list: "Final Cut Pro, Premiere Pro, Sony Vegas Pro, Sound Forge, Audition, After Effects, Fusion, PFTrack, RealFlow, Nuke, Mocha" },
-  { cat: "Digital art", list: "Scriptwriting, character and perspective sketching, vector design, digital and matte painting, photography, clay, stop-motion and classical animation, Storyboard Pro" },
+  { cat: "Digital art", list: "Scriptwriting, character and perspective sketching, vector design, digital and matte painting, photography, clay, stop-motion and classical animation, Storyboard Pro, Krita" },
   { cat: "Graphic design", list: "Photoshop, Illustrator, InDesign, Captivate, CorelDRAW, Krita, Figma" },
   { cat: "AI and emerging tech", list: "Generative AI tools for media design; AR/VR/MR platforms" },
   { cat: "Hardware", list: "Dell/Intel workstations, iMac, Wacom, Huion, DSLR and mirrorless cameras, gimbal, slider, drone, Meta Quest" }
@@ -501,7 +504,8 @@ const CERTIFICATIONS = [
 const SERVICE = [
   "Member, ACM SIGGRAPH Mumbai (India) Chapter.",
   "External examination paper setter: Sage University (2017), Raja Mansingh Tomar University (2018), Jagran Lakecity University (2018).",
-  "Invited expert for three-day workshops on Animation, VFX and Gaming: VISM College Gwalior, TIT Engineering College Bhopal, Maharaja Ranjit Singh College Indore, Maya Academy, Makhanlal Chaturvedi University (2018)."
+  "Invited expert for three-day workshops on Animation, VFX and Gaming: VISM College Gwalior, TIT Engineering College Bhopal, Maharaja Ranjit Singh College Indore, Maya Academy, Makhanlal Chaturvedi University and more.",
+  "Reviewer and jury member for student film screenings, portfolio reviews and creative industry collaborations."
 ];
 
 
@@ -527,7 +531,7 @@ const FLOW = [
 ];
 
 /* ---------- RESEARCH THEMES (visual tree on the Research tab) ----------
-   `find` is a piece of the title used to look the paper up above.          */
+    `find` is a piece of the title used to look the paper up above.          */
 const RESEARCH_THEMES = [
   { label: "AI in education", find: [
       "Future Trends and Innovations", "Unpacking the Human Experience", "Demystifying AI",
@@ -558,3 +562,4 @@ const PIPELINE = [
   { icon: "sparkle", title: "AI-assisted media", text: "Generative tools extend the toolkit for assets, ideas and experiments." },
   { icon: "flag", title: "Festival submission", text: "Finished films go out to national and international festivals, with guidance on where and how to enter." }
 ];
+
